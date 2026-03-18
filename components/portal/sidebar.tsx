@@ -19,6 +19,8 @@ import {
   Users,
   Shield
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from 'sonner';
 
 type SidebarLink = {
   href: string;
@@ -46,16 +48,26 @@ const officialLinks: SidebarLink[] = [
   { href: '/official/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/official/programs', label: 'Programs', icon: Calendar },
   { href: '/official/blotter', label: 'Blotter', icon: AlertTriangle },
+  { href: '/official/residents', label: 'Residents', icon: Users },
   { href: '/official/business', label: 'Business', icon: Building2 },
   { href: '/official/audit-logs', label: 'Audit Logs', icon: ClipboardList },
-  { href: '/official/officials', label: 'Officials', icon: Users },
   { href: '/official/profile', label: 'My Profile', icon: User },
 ];
 
 export function PortalSidebar({ type, children }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { userData, logout } = useAuth();
   const links = type === 'resident' ? residentLinks : officialLinks;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+    } catch (err) {
+      toast.error('Failed to logout');
+    }
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -69,7 +81,7 @@ export function PortalSidebar({ type, children }: SidebarProps) {
               alt="Barangay Santiago Logo"
               width={48}
               height={48}
-              className="rounded-full border-2 border-accent"
+              className="rounded-full border-2 border-primary"
             />
             <div>
               <h2 className="font-bold text-sm leading-tight">Barangay Santiago</h2>
@@ -86,6 +98,11 @@ export function PortalSidebar({ type, children }: SidebarProps) {
             {type === 'official' ? <Shield className="w-4 h-4" /> : <Users className="w-4 h-4" />}
             <span className="text-sm font-medium capitalize">{type} Portal</span>
           </div>
+          {userData && (
+            <p className="text-xs text-sidebar-foreground/60 mt-2 px-1 truncate">
+              {userData.fullName || userData.email}
+            </p>
+          )}
         </div>
 
         {/* Navigation Links */}
@@ -114,13 +131,13 @@ export function PortalSidebar({ type, children }: SidebarProps) {
 
         {/* Logout */}
         <div className="p-4 border-t border-sidebar-border">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-destructive transition-colors"
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-destructive transition-colors"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -132,7 +149,7 @@ export function PortalSidebar({ type, children }: SidebarProps) {
             alt="Barangay Santiago Logo"
             width={36}
             height={36}
-            className="rounded-full border-2 border-accent"
+            className="rounded-full border-2 border-primary"
           />
           <span className="font-bold text-sm">Brgy Santiago Saz</span>
         </div>
@@ -161,6 +178,11 @@ export function PortalSidebar({ type, children }: SidebarProps) {
             {type === 'official' ? <Shield className="w-4 h-4" /> : <Users className="w-4 h-4" />}
             <span className="text-sm font-medium capitalize">{type} Portal</span>
           </div>
+          {userData && (
+            <p className="text-xs text-sidebar-foreground/60 mt-2 px-1 truncate">
+              {userData.fullName || userData.email}
+            </p>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4">
@@ -188,13 +210,13 @@ export function PortalSidebar({ type, children }: SidebarProps) {
         </nav>
 
         <div className="p-4 border-t border-sidebar-border">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-destructive transition-colors"
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/80 hover:bg-destructive/20 hover:text-destructive transition-colors"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
-          </Link>
+          </button>
         </div>
       </aside>
 

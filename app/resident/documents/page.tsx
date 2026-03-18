@@ -6,36 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PortalHeader } from '@/components/portal/header';
-import { mockDocumentTypes } from '@/lib/mock-data';
-import { Sparkles, CheckCircle, Clock, XCircle, Trash2 } from 'lucide-react';
+import { useDocumentRequests, addDocument, deleteDocument, addAuditLog, formatTimestamp } from '@/lib/firebase-hooks';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from 'sonner';
+import { Sparkles, CheckCircle, Clock, XCircle, Trash2, FileText, AlertCircle } from 'lucide-react';
 
-type DocumentRequest = {
-  id: string;
-  type: string;
-  purpose: string;
-  status: string;
-  date: string;
-};
+const documentTypes = [
+  { id: '1', name: 'Barangay Clearance', description: 'For employment and legal purposes', days: 1 },
+  { id: '2', name: 'Certificate of Residency', description: 'Proof of residence in the barangay', days: 1 },
+  { id: '3', name: 'Certificate of Indigency', description: 'For financial assistance applications', days: 1 },
+  { id: '4', name: 'Business Permit', description: 'For business registration', days: 3 },
+  { id: '5', name: 'Building Permit', description: 'For construction purposes', days: 5 },
+];
 
 export default function DocumentsPage() {
-  const [requests, setRequests] = useState<DocumentRequest[]>([
-    { id: 'DOC-001', type: 'Barangay Clearance', purpose: 'Job application', status: 'completed', date: '2026-03-10' },
-    { id: 'DOC-002', type: 'Certificate of Residency', purpose: 'School enrollment', status: 'processing', date: '2026-03-15' },
-  ]);
+  const { user, userData } = useAuth();
+  const { data: requests, loading, error } = useDocumentRequests(user?.uid);
   const [newRequest, setNewRequest] = useState({ type: '', purpose: '' });
   const [aiRecommendation, setAiRecommendation] = useState<{ type: string; confidence: number } | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'approved':
+      case 'released':
         return <CheckCircle className="w-5 h-5 text-primary" />;
       case 'processing':
-        return <Clock className="w-5 h-5 text-accent-foreground" />;
+        return <Clock className="w-5 h-5 text-blue-500" />;
       case 'rejected':
         return <XCircle className="w-5 h-5 text-destructive" />;
       default:
-        return <Clock className="w-5 h-5 text-muted-foreground" />;
+        return <Clock className="w-5 h-5 text-amber-500" />;
     }
   };
 
@@ -48,14 +50,21 @@ export default function DocumentsPage() {
         job: 'Barangay Clearance',
         employment: 'Barangay Clearance',
         work: 'Barangay Clearance',
+        application: 'Barangay Clearance',
         school: 'Certificate of Residency',
         education: 'Certificate of Residency',
         enroll: 'Certificate of Residency',
+        transfer: 'Certificate of Residency',
         business: 'Business Permit',
         store: 'Business Permit',
+        shop: 'Business Permit',
         medical: 'Certificate of Indigency',
         hospital: 'Certificate of Indigency',
         assistance: 'Certificate of Indigency',
+        financial: 'Certificate of Indigency',
+        build: 'Building Permit',
+        construct: 'Building Permit',
+        renovation: 'Building Permit',
       };
 
       for (const [key, doc] of Object.entries(keywords)) {
@@ -71,29 +80,65 @@ export default function DocumentsPage() {
     setAiRecommendation(null);
   };
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
+  const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRequest.type || !newRequest.purpose) return;
+    if (!newRequest.type || !newRequest.purpose || !user || !userData) return;
 
-    const newReq: DocumentRequest = {
-      id: `DOC-${String(requests.length + 1).padStart(3, '0')}`,
-      type: newRequest.type,
-      purpose: newRequest.purpose,
-      status: 'pending',
-      date: new Date().toISOString().split('T')[0],
-    };
+    setSubmitting(true);
+    try {
+      await addDocument('document_requests', {
+        residentId: user.uid,
+        residentName: userData.fullName,
+        documentType: newRequest.type,
+        purpose: newRequest.purpose,
+        status: 'pending',
+        address: userData.address,
+      });
 
-    setRequests([newReq, ...requests]);
-    setNewRequest({ type: '', purpose: '' });
-    setAiRecommendation(null);
-    setShowForm(false);
-  };
+      // Add audit log
+      await addAuditLog({
+        userId: user.uid,
+        userName: userData.fullName,
+        userRole: 'resident',
+        action: 'Submitted document request',
+        module: 'Documents',
+        details: `Requested ${newRequest.type} for ${newRequest.purpose}`,
+      });
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this request?')) {
-      setRequests(requests.filter(r => r.id !== id));
+      toast.success('Document request submitted successfully');
+      setNewRequest({ type: '', purpose: '' });
+      setAiRecommendation(null);
+      setShowForm(false);
+    } catch (err) {
+      toast.error('Failed to submit request');
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this request?')) return;
+
+    try {
+      await deleteDocument('document_requests', id);
+      toast.success('Request deleted');
+    } catch (err) {
+      toast.error('Failed to delete request');
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <PortalHeader title="Document Requests" description="Request and track your barangay documents" />
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -124,7 +169,7 @@ export default function DocumentsPage() {
                   required
                 >
                   <option value="">Select a document type...</option>
-                  {mockDocumentTypes.map((doc) => (
+                  {documentTypes.map((doc) => (
                     <option key={doc.id} value={doc.name}>
                       {doc.name} ({doc.days} day{doc.days !== 1 ? 's' : ''})
                     </option>
@@ -180,8 +225,12 @@ export default function DocumentsPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Submit Request
+                <Button 
+                  type="submit" 
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Request'}
                 </Button>
               </div>
             </form>
@@ -192,7 +241,7 @@ export default function DocumentsPage() {
         <Card className="p-6 mb-8 border-primary/20 bg-primary/5">
           <h2 className="text-xl font-bold text-foreground mb-4">Available Documents</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockDocumentTypes.map((doc) => (
+            {documentTypes.map((doc) => (
               <div key={doc.id} className="p-4 bg-card rounded-lg border border-border">
                 <h3 className="font-semibold text-foreground mb-1">{doc.name}</h3>
                 <p className="text-sm text-muted-foreground mb-3">{doc.description}</p>
@@ -210,37 +259,47 @@ export default function DocumentsPage() {
             <h2 className="text-xl font-bold text-foreground mb-6">Your Requests</h2>
             <div className="space-y-4">
               {requests.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No requests yet. Create your first request above!</p>
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No requests yet. Create your first request above!</p>
+                </div>
               ) : (
-                requests.map((req) => (
+                requests.map((req: any) => (
                   <div 
                     key={req.id} 
                     className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition"
                   >
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-mono text-muted-foreground">{req.id}</span>
-                        <h3 className="font-semibold text-foreground">{req.type}</h3>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-mono text-muted-foreground">{req.id.slice(0, 8)}</span>
+                        <h3 className="font-semibold text-foreground">{req.documentType}</h3>
                         {getStatusIcon(req.status)}
                       </div>
                       <p className="text-sm text-muted-foreground">{req.purpose}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Requested on {req.date}</p>
+                      {req.notes && (
+                        <p className="text-xs text-primary mt-1">Note: {req.notes}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Requested: {formatTimestamp(req.createdAt)}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge className={`
-                        ${req.status === 'completed' ? 'bg-primary/10 text-primary' : ''}
-                        ${req.status === 'processing' ? 'bg-accent/20 text-accent-foreground' : ''}
-                        ${req.status === 'pending' ? 'bg-secondary/20 text-secondary-foreground' : ''}
+                        ${req.status === 'approved' || req.status === 'released' ? 'bg-primary/10 text-primary' : ''}
+                        ${req.status === 'processing' ? 'bg-blue-100 text-blue-700' : ''}
+                        ${req.status === 'pending' ? 'bg-amber-100 text-amber-700' : ''}
                         ${req.status === 'rejected' ? 'bg-destructive/10 text-destructive' : ''}
                       `}>
                         {req.status}
                       </Badge>
-                      <button
-                        onClick={() => handleDelete(req.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {req.status === 'pending' && (
+                        <button
+                          onClick={() => handleDelete(req.id)}
+                          className="p-2 text-muted-foreground hover:text-destructive transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))

@@ -95,80 +95,7 @@ const residentFaqData: FAQItem[] = [
   },
 ];
 
-// Official-specific FAQs
-const officialFaqData: FAQItem[] = [
-  // Document Management
-  {
-    question: 'How do I approve document requests?',
-    answer: 'To approve document requests:\n\n1. Go to Documents Management\n2. Click on the pending request\n3. Review the resident information\n4. Click "Approve" to process\n5. Use the Print button to generate the document\n\nApproved documents will notify the resident automatically.',
-    keywords: ['approve', 'document', 'request', 'process', 'accept'],
-  },
-  {
-    question: 'How do I reject a document request?',
-    answer: 'To reject a document request:\n\n1. Go to Documents Management\n2. Click on the pending request\n3. Select "Reject"\n4. Enter the reason for rejection\n5. Click Confirm\n\nThe resident will be notified with the reason.',
-    keywords: ['reject', 'deny', 'decline', 'refuse', 'document'],
-  },
-  {
-    question: 'How do I print approved documents?',
-    answer: 'To print an approved document:\n\n1. Go to Documents Management\n2. Find the approved document\n3. Click the Print icon in the Action column\n4. The document will open with resident details filled in\n5. Click Print or use Ctrl+P\n\nMake sure your printer is connected.',
-    keywords: ['print', 'document', 'clearance', 'certificate', 'generate'],
-  },
-  // Announcements
-  {
-    question: 'How do I create an announcement?',
-    answer: 'To create an announcement:\n\n1. Go to Announcements\n2. Click "Create Announcement"\n3. Enter the title and content\n4. Set the priority level\n5. Click Publish\n\nAll residents will see the announcement on their dashboard.',
-    keywords: ['announcement', 'create', 'post', 'publish', 'news'],
-  },
-  {
-    question: 'How do I edit or delete an announcement?',
-    answer: 'To edit or delete announcements:\n\n1. Go to Announcements\n2. Find the announcement\n3. Click Edit to modify or Delete to remove\n4. Confirm your action\n\nDeleted announcements cannot be recovered.',
-    keywords: ['edit', 'delete', 'announcement', 'modify', 'remove'],
-  },
-  // Programs
-  {
-    question: 'How do I create a new program?',
-    answer: 'To create a barangay program:\n\n1. Go to Programs\n2. Click "Create Program"\n3. Fill in program details:\n   - Program name\n   - Description\n   - Schedule/Date\n   - Location\n4. Click Save\n\nResidents can view and register for programs.',
-    keywords: ['program', 'create', 'new', 'activity', 'event'],
-  },
-  // Blotter Management
-  {
-    question: 'How do I handle blotter reports?',
-    answer: 'To handle blotter reports:\n\n1. Go to Blotter Management\n2. Review pending reports\n3. Click on a report to view details\n4. Update the status:\n   - Under Investigation\n   - Resolved\n   - Escalated\n5. Add notes or actions taken\n\nKeep records updated for transparency.',
-    keywords: ['blotter', 'report', 'handle', 'incident', 'complaint'],
-  },
-  // Resident Management
-  {
-    question: 'How do I view resident information?',
-    answer: 'To view resident information:\n\n1. Go to Residents\n2. Search by name or filter by zone\n3. Click on a resident to view full profile\n4. View their:\n   - Personal information\n   - Document history\n   - Blotter reports\n\nResident data is confidential.',
-    keywords: ['resident', 'information', 'view', 'profile', 'search'],
-  },
-  // Business Management
-  {
-    question: 'How do I manage business permits?',
-    answer: 'To manage business permits:\n\n1. Go to Business section\n2. Review pending applications\n3. Verify business information\n4. Approve or reject with notes\n5. Generate permit for approved applications\n\nBusiness permits require additional verification.',
-    keywords: ['business', 'permit', 'manage', 'application', 'approve'],
-  },
-  // Audit Logs
-  {
-    question: 'How do I view audit logs?',
-    answer: 'To view audit logs:\n\n1. Go to Audit Logs\n2. Filter by date, user, or action\n3. Review system activities:\n   - Document approvals\n   - User logins\n   - Data changes\n\nAudit logs help track all system activities for transparency.',
-    keywords: ['audit', 'log', 'history', 'track', 'activity'],
-  },
-  // Dashboard
-  {
-    question: 'What do the dashboard statistics mean?',
-    answer: 'Dashboard Statistics:\n\n- Total Residents: Registered residents count\n- Pending Requests: Documents awaiting review\n- Active Programs: Current running programs\n- Blotter Reports: Incident reports filed\n\nClick on any stat to view detailed information.',
-    keywords: ['dashboard', 'statistics', 'stats', 'overview', 'summary'],
-  },
-  // System
-  {
-    question: 'How do I update my official profile?',
-    answer: 'To update your profile:\n\n1. Go to Profile section\n2. Edit your information\n3. Change password if needed\n4. Click Save Changes\n\nKeep your information up to date for system records.',
-    keywords: ['profile', 'update', 'account', 'password', 'settings'],
-  },
-];
-
-const residentSuggestedQuestions = [
+const suggestedQuestions = [
   'How do I get a Barangay Clearance?',
   'What are the office hours?',
   'What is the emergency hotline?',
@@ -177,31 +104,12 @@ const residentSuggestedQuestions = [
   'How do I report an incident?',
 ];
 
-const officialSuggestedQuestions = [
-  'How do I approve documents?',
-  'How do I print certificates?',
-  'How do I create an announcement?',
-  'How do I handle blotter reports?',
-  'How do I view audit logs?',
-  'How do I manage business permits?',
-];
-
-interface AxlChatbotProps {
-  type: 'resident' | 'official';
-}
-
-export function AxlChatbot({ type }: AxlChatbotProps) {
+export function AxlChatbotResident() {
   const [open, setOpen] = useState(false);
-  const faqData = type === 'resident' ? residentFaqData : officialFaqData;
-  const suggestedQuestions = type === 'resident' ? residentSuggestedQuestions : officialSuggestedQuestions;
-  const welcomeMessage = type === 'resident' 
-    ? "Hello! I'm AXL, your AI assistant for Barangay Santiago. I can help you with document requests, barangay information, and services. How can I assist you today?"
-    : "Hello! I'm AXL, your administrative assistant. I can help you with document management, announcements, programs, and other official tasks. How can I help you today?";
-
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: welcomeMessage,
+      content: "Hello! I'm AXL, your AI assistant for Barangay Santiago. I can help you with document requests, barangay information, and services. How can I assist you today?",
       sender: 'axl',
       timestamp: new Date(),
     },
@@ -222,21 +130,18 @@ export function AxlChatbot({ type }: AxlChatbotProps) {
   const findAnswer = (question: string): string => {
     const lowerQuestion = question.toLowerCase();
     
-    // Search through FAQ data for matching answers
     let bestMatch: FAQItem | null = null;
     let highestScore = 0;
 
-    for (const faq of faqData) {
+    for (const faq of residentFaqData) {
       let score = 0;
       
-      // Check keyword matches
       for (const keyword of faq.keywords) {
         if (lowerQuestion.includes(keyword.toLowerCase())) {
           score += 2;
         }
       }
       
-      // Check question similarity
       const faqWords = faq.question.toLowerCase().split(' ').filter(word => word.length > 3);
       for (const word of faqWords) {
         if (lowerQuestion.includes(word)) {
@@ -254,12 +159,7 @@ export function AxlChatbot({ type }: AxlChatbotProps) {
       return bestMatch.answer;
     }
 
-    // Default response based on type
-    if (type === 'resident') {
-      return "I'm sorry, I don't have specific information about that. Please try:\n\n- Rephrasing your question\n- Using the suggested questions above\n- Contacting the barangay office at 0912-345-6789\n\nOffice hours: Mon-Fri 8AM-5PM, Sat 8AM-12PM";
-    } else {
-      return "I don't have specific information about that topic. Please try:\n\n- Rephrasing your question\n- Checking the relevant section in the sidebar\n- Contacting the system administrator\n\nFor technical issues, please report to your IT support.";
-    }
+    return "I'm sorry, I don't have specific information about that. Please try:\n\n- Rephrasing your question\n- Using the suggested questions above\n- Contacting the barangay office at 0912-345-6789\n\nOffice hours: Mon-Fri 8AM-5PM, Sat 8AM-12PM";
   };
 
   const handleSend = async (messageText?: string) => {
@@ -278,7 +178,6 @@ export function AxlChatbot({ type }: AxlChatbotProps) {
     setShowSuggestions(false);
     setIsTyping(true);
 
-    // Simulate AI processing delay
     setTimeout(() => {
       const answer = findAnswer(text);
       const axlMessage: Message = {
@@ -329,9 +228,7 @@ export function AxlChatbot({ type }: AxlChatbotProps) {
             </div>
             <div className="flex-1">
               <h3 className="font-bold">AXL</h3>
-              <p className="text-xs text-primary-foreground/80">
-                {type === 'resident' ? 'Resident Assistant' : 'Official Assistant'}
-              </p>
+              <p className="text-xs text-primary-foreground/80">Resident Assistant</p>
             </div>
             <button
               onClick={() => setOpen(false)}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
@@ -20,14 +20,23 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, userData } = useAuth();
+
+  // Get redirect URL based on user role
+  const getDashboardUrl = () => {
+    if (userData?.role === 'official') return '/official/dashboard';
+    if (userData?.role === 'resident') return '/resident/dashboard';
+    return '/login';
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-secondary/95 backdrop-blur-sm border-b border-secondary-foreground/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-sidebar/95 backdrop-blur-sm border-b border-sidebar-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -38,28 +47,36 @@ export default function LandingPage() {
                 height={40}
                 className="rounded-full"
               />
-              <span className="text-secondary-foreground font-bold text-lg hidden sm:block">
+              <span className="text-sidebar-foreground font-bold text-lg hidden sm:block">
                 Barangay Santiago Saz
               </span>
             </div>
             
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
-              <a href="#home" className="text-secondary-foreground/80 hover:text-secondary-foreground transition">Home</a>
-              <a href="#about" className="text-secondary-foreground/80 hover:text-secondary-foreground transition">About</a>
-              <a href="#services" className="text-secondary-foreground/80 hover:text-secondary-foreground transition">Services</a>
-              <a href="#contact" className="text-secondary-foreground/80 hover:text-secondary-foreground transition">Contact</a>
-              <Link href="/login">
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Login
-                </Button>
-              </Link>
+              <a href="#home" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition">Home</a>
+              <a href="#about" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition">About</a>
+              <a href="#services" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition">Services</a>
+              <a href="#contact" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition">Contact</a>
+              {user ? (
+                <Link href={getDashboardUrl()}>
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login">
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    Login
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-secondary-foreground p-2"
+              className="md:hidden text-sidebar-foreground p-2"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -68,24 +85,32 @@ export default function LandingPage() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-secondary border-t border-secondary-foreground/10 animate-fadeUp">
+          <div className="md:hidden bg-sidebar border-t border-sidebar-border animate-fadeUp">
             <div className="px-4 py-4 flex flex-col gap-4">
-              <a href="#home" className="text-secondary-foreground/80 hover:text-secondary-foreground transition py-2">Home</a>
-              <a href="#about" className="text-secondary-foreground/80 hover:text-secondary-foreground transition py-2">About</a>
-              <a href="#services" className="text-secondary-foreground/80 hover:text-secondary-foreground transition py-2">Services</a>
-              <a href="#contact" className="text-secondary-foreground/80 hover:text-secondary-foreground transition py-2">Contact</a>
-              <Link href="/login">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Login
-                </Button>
-              </Link>
+              <a href="#home" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition py-2">Home</a>
+              <a href="#about" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition py-2">About</a>
+              <a href="#services" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition py-2">Services</a>
+              <a href="#contact" className="text-sidebar-foreground/80 hover:text-sidebar-foreground transition py-2">Contact</a>
+              {user ? (
+                <Link href={getDashboardUrl()}>
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    Login
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )}
       </nav>
 
       {/* Hero Section */}
-      <section id="home" className="relative pt-16 min-h-[600px] flex items-center justify-center bg-gradient-to-br from-secondary via-secondary to-primary/20">
+      <section id="home" className="relative pt-16 min-h-[600px] flex items-center justify-center bg-gradient-to-br from-sidebar via-sidebar/90 to-primary/30">
         <div className="absolute inset-0 bg-[url('/santiago.jpg')] bg-cover bg-center opacity-10" />
         <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 text-center">
           <div className="animate-fadeUp">
@@ -94,23 +119,23 @@ export default function LandingPage() {
               alt="Barangay Santiago Logo"
               width={120}
               height={120}
-              className="rounded-full mx-auto mb-6 border-4 border-accent shadow-lg"
+              className="rounded-full mx-auto mb-6 border-4 border-primary shadow-lg"
             />
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-secondary-foreground mb-4 text-balance">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-sidebar-foreground mb-4 text-balance">
               Barangay Santiago Saz Portal
             </h1>
-            <p className="text-lg sm:text-xl text-secondary-foreground/80 mb-8 max-w-2xl mx-auto text-pretty">
+            <p className="text-lg sm:text-xl text-sidebar-foreground/80 mb-8 max-w-2xl mx-auto text-pretty">
               AI-Assisted Barangay Santiago Portal: Smart Document Processing and Resident Service Automation
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/login?type=resident">
+              <Link href="/login/resident">
                 <Button size="lg" className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-8">
                   <Users className="w-5 h-5 mr-2" />
                   Resident Login
                 </Button>
               </Link>
-              <Link href="/login?type=official">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-secondary-foreground/30 text-secondary-foreground hover:bg-secondary-foreground/10 px-8">
+              <Link href="/login/official">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto border-sidebar-foreground/30 text-sidebar-foreground hover:bg-sidebar-foreground/10 px-8">
                   <Shield className="w-5 h-5 mr-2" />
                   Official Login
                 </Button>
@@ -171,7 +196,7 @@ export default function LandingPage() {
               { icon: Heart, title: 'AI-Assisted Processing', desc: 'Faster document verification and smart data handling.' },
             ].map((item, index) => (
               <Card key={index} className="p-6 hover:shadow-lg transition animate-fadeUp border-primary/20" style={{ animationDelay: `${index * 0.1}s` }}>
-                <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center mb-4">
                   <item.icon className="w-6 h-6 text-accent-foreground" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
@@ -219,9 +244,9 @@ export default function LandingPage() {
             </Card>
 
             {/* Evacuation Centers */}
-            <Card className="p-6 border-accent/40 animate-fadeUp" style={{ animationDelay: '0.2s' }}>
+            <Card className="p-6 border-accent animate-fadeUp" style={{ animationDelay: '0.2s' }}>
               <div className="flex items-center gap-3 mb-4">
-                <Building2 className="w-6 h-6 text-accent-foreground" />
+                <Building2 className="w-6 h-6 text-primary" />
                 <h3 className="font-semibold text-foreground">Evacuation Centers</h3>
               </div>
               <ul className="text-sm text-muted-foreground space-y-2">
@@ -234,7 +259,7 @@ export default function LandingPage() {
             {/* Typhoon Contact */}
             <Card className="p-6 border-secondary/40 animate-fadeUp" style={{ animationDelay: '0.3s' }}>
               <div className="flex items-center gap-3 mb-4">
-                <AlertTriangle className="w-6 h-6 text-accent-foreground" />
+                <AlertTriangle className="w-6 h-6 text-secondary" />
                 <h3 className="font-semibold text-foreground">During Typhoon</h3>
               </div>
               <ul className="text-sm text-muted-foreground space-y-2">
@@ -248,38 +273,38 @@ export default function LandingPage() {
       </section>
 
       {/* Office Hours */}
-      <section className="py-12 bg-secondary text-secondary-foreground">
+      <section className="py-12 bg-sidebar text-sidebar-foreground">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div className="animate-fadeUp">
-              <Clock className="w-8 h-8 mx-auto mb-3 text-accent" />
+              <Clock className="w-8 h-8 mx-auto mb-3 text-primary" />
               <h3 className="font-semibold mb-2">Office Hours</h3>
-              <p className="text-sm text-secondary-foreground/80">Mon-Fri: 8 AM - 5 PM</p>
-              <p className="text-sm text-secondary-foreground/80">Sat: 8 AM - 12 PM</p>
+              <p className="text-sm text-sidebar-foreground/80">Mon-Fri: 8 AM - 5 PM</p>
+              <p className="text-sm text-sidebar-foreground/80">Sat: 8 AM - 12 PM</p>
             </div>
             <div className="animate-fadeUp" style={{ animationDelay: '0.1s' }}>
-              <MapPin className="w-8 h-8 mx-auto mb-3 text-accent" />
+              <MapPin className="w-8 h-8 mx-auto mb-3 text-primary" />
               <h3 className="font-semibold mb-2">Location</h3>
-              <p className="text-sm text-secondary-foreground/80">Barangay Santiago Hall</p>
-              <p className="text-sm text-secondary-foreground/80">Near Covered Court</p>
+              <p className="text-sm text-sidebar-foreground/80">Barangay Santiago Hall</p>
+              <p className="text-sm text-sidebar-foreground/80">Near Covered Court</p>
             </div>
             <div className="animate-fadeUp" style={{ animationDelay: '0.2s' }}>
-              <Phone className="w-8 h-8 mx-auto mb-3 text-accent" />
+              <Phone className="w-8 h-8 mx-auto mb-3 text-primary" />
               <h3 className="font-semibold mb-2">Contact Us</h3>
-              <p className="text-sm text-secondary-foreground/80">info@santiago.gov</p>
-              <p className="text-sm text-secondary-foreground/80">0912-345-6789</p>
+              <p className="text-sm text-sidebar-foreground/80">info@santiago.gov</p>
+              <p className="text-sm text-sidebar-foreground/80">0912-345-6789</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-6 bg-secondary/90 border-t border-secondary-foreground/10">
+      <footer className="py-6 bg-sidebar/90 border-t border-sidebar-border">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-sm text-secondary-foreground/60">
+          <p className="text-sm text-sidebar-foreground/60">
             &copy; 2026 Barangay Santiago Saz. All rights reserved.
           </p>
-          <p className="text-xs text-secondary-foreground/40 mt-1">
+          <p className="text-xs text-sidebar-foreground/40 mt-1">
             Privacy Policy | Terms of Service
           </p>
         </div>

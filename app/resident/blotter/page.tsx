@@ -6,32 +6,43 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PortalHeader } from '@/components/portal/header';
-import { AlertTriangle, AlertCircle, Info, Sparkles, Trash2 } from 'lucide-react';
+import { useBlotterReports, addDocument, deleteDocument, addAuditLog, formatTimestamp } from '@/lib/firebase-hooks';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from 'sonner';
+import { AlertTriangle, AlertCircle, Info, Sparkles, Trash2, FileText } from 'lucide-react';
 
-type BlotterCase = {
-  id: string;
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  date: string;
-  status: string;
-};
+const incidentTypes = [
+  'Noise Complaint',
+  'Property Dispute',
+  'Lost Item',
+  'Found Item',
+  'Theft',
+  'Vandalism',
+  'Trespassing',
+  'Domestic Dispute',
+  'Traffic Incident',
+  'Other',
+];
 
 export default function BlotterPage() {
-  const [cases, setCases] = useState<BlotterCase[]>([
-    { id: 'BLT-001', title: 'Lost Wallet', description: 'Lost my wallet near the barangay hall', severity: 'low', date: '2026-03-15', status: 'resolved' },
-    { id: 'BLT-002', title: 'Noise Complaint', description: 'Excessive noise from construction at night', severity: 'medium', date: '2026-03-16', status: 'open' },
-  ]);
-  const [newCase, setNewCase] = useState({ title: '', description: '' });
+  const { user, userData } = useAuth();
+  const { data: cases, loading } = useBlotterReports(user?.uid);
+  const [newCase, setNewCase] = useState({ 
+    incidentType: '', 
+    title: '', 
+    description: '', 
+    location: '' 
+  });
   const [aiSeverity, setAiSeverity] = useState<'low' | 'medium' | 'high' | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'high':
         return <AlertTriangle className="w-5 h-5 text-destructive" />;
       case 'medium':
-        return <AlertCircle className="w-5 h-5 text-accent-foreground" />;
+        return <AlertCircle className="w-5 h-5 text-amber-500" />;
       case 'low':
         return <Info className="w-5 h-5 text-primary" />;
       default:
@@ -42,8 +53,8 @@ export default function BlotterPage() {
   const handleDescriptionChange = (value: string) => {
     setNewCase({ ...newCase, description: value });
 
-    const highSeverityKeywords = ['violence', 'injury', 'assault', 'robbery', 'theft', 'accident', 'injured', 'harm', 'fight', 'attack'];
-    const mediumSeverityKeywords = ['noise', 'disturbance', 'property', 'damage', 'dispute', 'argument', 'trespass'];
+    const highSeverityKeywords = ['violence', 'injury', 'assault', 'robbery', 'theft', 'accident', 'injured', 'harm', 'fight', 'attack', 'threat', 'weapon'];
+    const mediumSeverityKeywords = ['noise', 'disturbance', 'property', 'damage', 'dispute', 'argument', 'trespass', 'vandalism'];
 
     const text = value.toLowerCase();
     if (highSeverityKeywords.some(keyword => text.includes(keyword))) {
@@ -57,31 +68,68 @@ export default function BlotterPage() {
     }
   };
 
-  const handleSubmitCase = (e: React.FormEvent) => {
+  const handleSubmitCase = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCase.title || !newCase.description) return;
+    if (!newCase.incidentType || !newCase.title || !newCase.description || !user || !userData) return;
 
+    setSubmitting(true);
     const severity = aiSeverity || 'low';
-    const newCaseData: BlotterCase = {
-      id: `BLT-${String(cases.length + 1).padStart(3, '0')}`,
-      title: newCase.title,
-      description: newCase.description,
-      severity,
-      date: new Date().toISOString().split('T')[0],
-      status: 'open',
-    };
 
-    setCases([newCaseData, ...cases]);
-    setNewCase({ title: '', description: '' });
-    setAiSeverity(null);
-    setShowForm(false);
-  };
+    try {
+      await addDocument('blotter_reports', {
+        reporterId: user.uid,
+        reporterName: userData.fullName,
+        incidentType: newCase.incidentType,
+        title: newCase.title,
+        description: newCase.description,
+        location: newCase.location || userData.address,
+        severity,
+        status: 'reported',
+      });
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this report?')) {
-      setCases(cases.filter(c => c.id !== id));
+      await addAuditLog({
+        userId: user.uid,
+        userName: userData.fullName,
+        userRole: 'resident',
+        action: 'Filed blotter report',
+        module: 'Blotter',
+        details: `${newCase.incidentType}: ${newCase.title}`,
+      });
+
+      toast.success('Blotter report filed successfully');
+      setNewCase({ incidentType: '', title: '', description: '', location: '' });
+      setAiSeverity(null);
+      setShowForm(false);
+    } catch (err) {
+      toast.error('Failed to file report');
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this report?')) return;
+
+    try {
+      await deleteDocument('blotter_reports', id);
+      toast.success('Report deleted');
+    } catch (err) {
+      toast.error('Failed to delete report');
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <PortalHeader title="Blotter Report" description="File and track incident reports" />
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -104,6 +152,21 @@ export default function BlotterPage() {
             <h2 className="text-2xl font-bold text-foreground mb-6">File a Blotter Report</h2>
             <form onSubmit={handleSubmitCase} className="space-y-4">
               <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Incident Type</label>
+                <select
+                  value={newCase.incidentType}
+                  onChange={(e) => setNewCase({ ...newCase, incidentType: e.target.value })}
+                  className="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  required
+                >
+                  <option value="">Select incident type...</option>
+                  {incidentTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Incident Title</label>
                 <Input
                   type="text"
@@ -112,6 +175,17 @@ export default function BlotterPage() {
                   placeholder="Brief title of the incident..."
                   className="border-input focus:ring-primary/50"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Location</label>
+                <Input
+                  type="text"
+                  value={newCase.location}
+                  onChange={(e) => setNewCase({ ...newCase, location: e.target.value })}
+                  placeholder="Where did the incident occur?"
+                  className="border-input focus:ring-primary/50"
                 />
               </div>
 
@@ -130,12 +204,16 @@ export default function BlotterPage() {
               {aiSeverity && (
                 <div className={`p-4 border rounded-lg animate-fadeUp ${
                   aiSeverity === 'high' ? 'bg-destructive/10 border-destructive/20' :
-                  aiSeverity === 'medium' ? 'bg-accent/10 border-accent/20' :
+                  aiSeverity === 'medium' ? 'bg-amber-50 border-amber-200' :
                   'bg-primary/10 border-primary/20'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4" />
-                    <p className="font-semibold">
+                    <p className={`font-semibold ${
+                      aiSeverity === 'high' ? 'text-destructive' :
+                      aiSeverity === 'medium' ? 'text-amber-700' :
+                      'text-primary'
+                    }`}>
                       {aiSeverity === 'high' ? 'High Priority Incident' :
                        aiSeverity === 'medium' ? 'Medium Priority Incident' :
                        'Low Priority Report'}
@@ -155,15 +233,19 @@ export default function BlotterPage() {
                   variant="outline" 
                   onClick={() => {
                     setShowForm(false);
-                    setNewCase({ title: '', description: '' });
+                    setNewCase({ incidentType: '', title: '', description: '', location: '' });
                     setAiSeverity(null);
                   }}
                   className="flex-1"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Submit Report
+                <Button 
+                  type="submit" 
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Report'}
                 </Button>
               </div>
             </form>
@@ -176,37 +258,61 @@ export default function BlotterPage() {
             <h2 className="text-xl font-bold text-foreground mb-6">Your Reports</h2>
             <div className="space-y-4">
               {cases.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No reports yet.</p>
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No reports yet.</p>
+                </div>
               ) : (
-                cases.map((caseItem) => (
+                cases.map((caseItem: any) => (
                   <div key={caseItem.id} className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono text-muted-foreground">{caseItem.id}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{caseItem.id.slice(0, 8)}</span>
                         <h3 className="font-semibold text-foreground text-lg">{caseItem.title}</h3>
                         {getSeverityIcon(caseItem.severity)}
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={`
                           ${caseItem.severity === 'high' ? 'bg-destructive/10 text-destructive' : ''}
-                          ${caseItem.severity === 'medium' ? 'bg-accent/20 text-accent-foreground' : ''}
+                          ${caseItem.severity === 'medium' ? 'bg-amber-100 text-amber-700' : ''}
                           ${caseItem.severity === 'low' ? 'bg-primary/10 text-primary' : ''}
                         `}>
                           {caseItem.severity}
                         </Badge>
-                        <Badge className={caseItem.status === 'resolved' ? 'bg-primary/10 text-primary' : 'bg-accent/20 text-accent-foreground'}>
+                        <Badge className={
+                          caseItem.status === 'resolved' || caseItem.status === 'closed' 
+                            ? 'bg-primary/10 text-primary' 
+                            : caseItem.status === 'investigating'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-destructive/10 text-destructive'
+                        }>
                           {caseItem.status}
                         </Badge>
-                        <button
-                          onClick={() => handleDelete(caseItem.id)}
-                          className="p-2 text-muted-foreground hover:text-destructive transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {caseItem.status === 'reported' && (
+                          <button
+                            onClick={() => handleDelete(caseItem.id)}
+                            className="p-2 text-muted-foreground hover:text-destructive transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      <strong>Type:</strong> {caseItem.incidentType}
+                    </p>
                     <p className="text-muted-foreground mb-2">{caseItem.description}</p>
-                    <p className="text-xs text-muted-foreground">Reported on {caseItem.date}</p>
+                    {caseItem.location && (
+                      <p className="text-xs text-muted-foreground">Location: {caseItem.location}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Reported: {formatTimestamp(caseItem.createdAt)}
+                    </p>
+                    {caseItem.handlerNotes && (
+                      <p className="text-xs text-primary mt-2 p-2 bg-primary/5 rounded">
+                        <strong>Official Note:</strong> {caseItem.handlerNotes}
+                      </p>
+                    )}
                   </div>
                 ))
               )}

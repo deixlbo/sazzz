@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Poppins, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { AuthProvider } from '@/lib/auth-context'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const poppins = Poppins({ 
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#1E3A8A',
+  themeColor: '#2d5a3d',
   width: 'device-width',
   initialScale: 1,
 }
@@ -38,7 +40,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+          <Toaster position="top-right" richColors />
+        </AuthProvider>
         <Analytics />
       </body>
     </html>
